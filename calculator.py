@@ -41,17 +41,95 @@ To submit your homework:
 
 """
 
+import traceback
+
 
 def add(*args):
     """ Returns a STRING with the sum of the arguments """
+    page = """
+        <head>
+            <title>WSGI Calculator: Add</title>
+        </head>
+        """
+    if len(args) == 2:
+        total = sum(map(int, args))
+        return page + 'Adding {} + {} <br>Your total is: {}<br><br><a href="http://localhost:8080">Home</a>'.format(str(args[0]), str(args[1]), str(total))
+    else:
+        return page + 'Please, enter exactly 2 arguments.<br><br><a href="http://localhost:8080">Home</a>'
 
-    # TODO: Fill sum with the correct value, based on the
-    # args provided.
-    sum = "0"
 
-    return sum
+def subtract(*args):
+    """ Returns a STRING with the subtraction of the arguments """
+    page = """
+        <head>
+            <title>WSGI Calculator: Subtract</title>
+        </head>
+        """
+    if len(args) == 2:
+        total = int(args[0]) - int(args[1])
+        return page + 'Subtracting {} - {}<br>Your total is: {}<br><br><a href="http://localhost:8080">Home</a>'.format(str(args[0]), str(args[1]), str(total))
+    else:
+        return page + 'Please, enter exactly 2 arguments.<br><br><a href="http://localhost:8080">Home</a>'
 
-# TODO: Add functions for handling more arithmetic operations.
+
+def multiply(*args):
+    """ Returns a STRING with the multiplication of the arguments """
+    page = """
+        <head>
+            <title>WSGI Calculator: Multiply</title>
+        </head>
+        """
+    if len(args) == 2:
+        total = int(args[0]) * int(args[1])
+        return page + 'Multiplying {} x {}<br>Your total is: {}<br><br><a href="http://localhost:8080">Home</a>'.format(str(args[0]), str(args[1]), str(total))
+    else:
+        return page + 'Please, enter exactly 2 arguments.<br><br><a href="http://localhost:8080">Home</a>'
+
+
+def divide(*args):
+    """ Returns a STRING with the division of the arguments """
+    page = """
+        <head>
+            <title>WSGI Calculator: Divide</title>
+        </head>
+        """
+    if len(args) == 2:
+        if int(args[1]) == 0:
+            return page + 'Divide by zero attempt. <br><br><a href="http://localhost:8080">Home</a>'
+        else:
+            total = int(args[0]) / int(args[1])
+            return page + 'Dividing {} / {}<br>Your total is: {}<br><br><a href="http://localhost:8080">Home</a>'.format(str(args[0]), str(args[1]), str(total))
+    else:
+        return page + 'Please, enter exactly 2 arguments.<br><br><a href="http://localhost:8080">Home</a>'
+
+
+def home():
+    page = """
+        <head>
+            <title>WSGI Calculator</title>
+            <style>
+                table, th, td {
+                border: 1px solid black;
+                border-collapse: collapse;
+                }
+                th, td {
+                padding: 15px;
+                }
+            </style>
+        </head>
+        <h1>Welcome to the WSGI Calculator</h1>
+        <h2>See instructions below</h2>
+        <table>
+            <tr><th>Operation</th><th>Instructions</th><th>Example</th></tr>
+            <tr><td>Add</td><td>/add/operand_1/operand_2</td><td><a href='http://localhost:8080/add/23/42'>http://localhost:8080/add/23/42</a></td></tr>
+            <tr><td>Subtract</td><td>/add/operand_1/operand_2</td><td><a href='http://localhost:8080/subtract/23/42'>http://localhost:8080/subtract/23/42</a></td></tr>
+            <tr><td>Multiply</td><td>/add/operand_1/operand_2</td><td><a href='http://localhost:8080/multiply/23/42'>http://localhost:8080/multiply/23/42</a></td></tr>
+            <tr><td>Divide</td><td>/add/operand_1/operand_2</td><td><a href='http://localhost:8080/divide/23/42'>http://localhost:8080/divide/23/42</a></td></tr>
+        </table>
+        
+        """
+    return page
+
 
 def resolve_path(path):
     """
@@ -60,25 +138,71 @@ def resolve_path(path):
     """
 
     # TODO: Provide correct values for func and args. The
-    # examples provide the correct *syntax*, but you should
-    # determine the actual values of func and args using the
-    # path.
-    func = add
-    args = ['25', '32']
+    #  examples provide the correct *syntax*, but you should
+    #  determine the actual values of func and args using the
+    #  path.
+    #  func = add
+    #  args = ['25', '32']
+
+    funcs = {
+        '': home,
+        'add': add,
+        'subtract': subtract,
+        'multiply': multiply,
+        'divide': divide,
+        }
+
+    path = path.strip('/').split('/')
+
+    func_name = path[0]
+
+    args = path[1:]
+
+    try:
+        func = funcs[func_name]
+    except KeyError:
+        raise NameError
 
     return func, args
 
+
 def application(environ, start_response):
     # TODO: Your application code from the book database
-    # work here as well! Remember that your application must
-    # invoke start_response(status, headers) and also return
-    # the body of the response in BYTE encoding.
+    #  work here as well! Remember that your application must
+    #  invoke start_response(status, headers) and also return
+    #  the body of the response in BYTE encoding.
     #
     # TODO (bonus): Add error handling for a user attempting
-    # to divide by zero.
-    pass
+    #  to divide by zero.
+    headers = [('Content-type', 'text/html')]
+
+    try:
+        path = environ.get('PATH_INFO', None)
+        if path is None:
+            raise NameError
+
+        func, args = resolve_path(path)
+        
+        body = func(*args)
+        status = '200 OK'
+
+    except NameError:
+        status = '404 Not Found'
+        body = '<h1>Not Found</h1>'
+
+    except Exception:
+        status = '500 Internal Server Error'
+        body = '<h1>Internal Server Error</h1>'
+        print(traceback.format_exc())
+
+    finally:
+        headers.append(('Content-length', str(len(body))))
+        start_response(status, headers)
+        return [body.encode('utf8')]
+
 
 if __name__ == '__main__':
-    # TODO: Insert the same boilerplate wsgiref simple
-    # server creation that you used in the book database.
-    pass
+
+    from wsgiref.simple_server import make_server
+    srv = make_server('localhost', 8080, application)
+    srv.serve_forever()
